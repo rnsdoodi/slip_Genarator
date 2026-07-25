@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
@@ -7,20 +8,40 @@ from docx.shared import Inches, Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 import pandas as pd
-import os
 import re
 import math
 import zipfile
 from datetime import datetime, date
 from functools import wraps
+from urllib.parse import urlparse
 
 # ============================================
 # 1. إعداد التطبيق
 # ============================================
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here-change-this-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///employees.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here-change-this-in-production')
+
+# ===== إعداد قاعدة البيانات =====
+database_url = os.environ.get('DATABASE_URL')
+
+if database_url:
+    # تعديل الرابط ليتوافق مع SQLAlchemy
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    # إضافة SSL mode
+    if '?' not in database_url:
+        database_url += '?sslmode=require'
+    else:
+        database_url += '&sslmode=require'
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print('✅ Using PostgreSQL database')
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///employees.db'
+    print('ℹ️ Using SQLite database (local)')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -32,6 +53,37 @@ db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static', exist_ok=True)
 
+# ===== إنشاء الجداول والمستخدم المدير (سيُنفذ مع أي بدء تشغيل) =====
+with app.app_context():
+    try:
+        db.create_all()
+        print('✅ Database tables created/verified')
+        
+        # إنشاء المستخدم المدير
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                email='admin@example.com',
+                full_name='System Administrator',
+                is_admin=True
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
+            db.session.commit()
+            print('=' * 50)
+            print('✅ Admin user created successfully!')
+            print('   👤 Username: admin')
+            print('   🔑 Password: admin123')
+            print('=' * 50)
+        else:
+            print('ℹ️ Admin user already exists')
+    except Exception as e:
+        print(f'⚠️ Error initializing database: {e}')
+        import traceback
+        traceback.print_exc()
+
+# ... باقي الكود (نماذج، دوال، Routes) ...
 
 # ============================================
 # 2. نماذج قاعدة البيانات
@@ -140,9 +192,6 @@ class UploadedFile(db.Model):
 
     user = db.relationship('User', backref=db.backref('uploads', lazy=True))
 
-
-with app.app_context():
-    db.create_all()
 # ============================================
 # 3. دوال المصادقة (Authentication)
 # ============================================
