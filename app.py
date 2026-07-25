@@ -141,6 +141,8 @@ class UploadedFile(db.Model):
     user = db.relationship('User', backref=db.backref('uploads', lazy=True))
 
 
+with app.app_context():
+    db.create_all()
 # ============================================
 # 3. دوال المصادقة (Authentication)
 # ============================================
