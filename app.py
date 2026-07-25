@@ -1,4 +1,13 @@
 import os
+import re
+import math
+import zipfile
+import traceback
+from datetime import datetime, date
+from functools import wraps
+from io import BytesIO
+from urllib.parse import urlparse
+
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
@@ -6,14 +15,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from docx import Document
 from docx.shared import Inches, Pt, Cm, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from io import BytesIO
 import pandas as pd
-import re
-import math
-import zipfile
-from datetime import datetime, date
-from functools import wraps
-from urllib.parse import urlparse
 
 # ============================================
 # 1. إعداد التطبيق
@@ -26,16 +28,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here-ch
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
-    # تعديل الرابط ليتوافق مع SQLAlchemy
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    # إضافة SSL mode
     if '?' not in database_url:
         database_url += '?sslmode=require'
     else:
         database_url += '&sslmode=require'
-    
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     print('✅ Using PostgreSQL database')
 else:
@@ -49,48 +47,13 @@ app.config['ALLOWED_EXTENSIONS'] = {'xlsx', 'xls'}
 
 db = SQLAlchemy(app)
 
-# ============================================
-# إنشاء الجداول والمستخدم المدير تلقائياً
-# ============================================
-
-with app.app_context():
-    try:
-        db.create_all()
-        print('✅ Database tables created/verified')
-
-        # إنشاء المستخدم المدير
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                full_name='System Administrator',
-                is_admin=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-            db.session.commit()
-            print('=' * 50)
-            print('✅ Admin user created successfully!')
-            print('   👤 Username: admin')
-            print('   🔑 Password: admin123')
-            print('=' * 50)
-        else:
-            print('ℹ️ Admin user already exists')
-    except Exception as e:
-        print(f'⚠️ Error initializing database: {e}')
-        import traceback
-
-        traceback.print_exc()
-
 # إنشاء المجلدات
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static', exist_ok=True)
 
 
-
 # ============================================
-# 2. نماذج قاعدة البيانات
+# 2. نماذج قاعدة البيانات (يجب أن تكون قبل db.create_all)
 # ============================================
 
 class User(db.Model):
@@ -196,26 +159,57 @@ class UploadedFile(db.Model):
 
     user = db.relationship('User', backref=db.backref('uploads', lazy=True))
 
+
 # ============================================
-# 3. دوال المصادقة (Authentication)
+# 3. إنشاء الجداول والمستخدم المدير (بعد تعريف النماذج)
+# ============================================
+
+with app.app_context():
+    try:
+        db.create_all()
+        print('✅ Database tables created/verified')
+
+        # إنشاء المستخدم المدير
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(
+                username='admin',
+                email='admin@example.com',
+                full_name='System Administrator',
+                is_admin=True
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
+            db.session.commit()
+            print('=' * 50)
+            print('✅ Admin user created successfully!')
+            print('   👤 Username: admin')
+            print('   🔑 Password: admin123')
+            print('=' * 50)
+        else:
+            print('ℹ️ Admin user already exists')
+    except Exception as e:
+        print(f'⚠️ Error initializing database: {e}')
+        traceback.print_exc()
+
+
+# ============================================
+# 4. دوال المصادقة (Authentication)
 # ============================================
 
 def login_required(f):
     """Decorator لحماية الصفحات التي تتطلب تسجيل دخول"""
-
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash('⚠️ Please login to access this page', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
 def admin_required(f):
     """Decorator للصفحات التي تتطلب صلاحيات مدير"""
-
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -226,12 +220,11 @@ def admin_required(f):
             flash('⛔ Access denied. Admin privileges required.', 'error')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
 # ============================================
-# 4. دوال مساعدة
+# 5. دوال مساعدة
 # ============================================
 
 def allowed_file(filename):
@@ -314,7 +307,7 @@ def calculate_service_period(hire_date_str, end_date_str=None):
 
 
 # ============================================
-# 5. إنشاء الـ Slip
+# 6. إنشاء الـ Slip
 # ============================================
 
 def create_professional_slip(employee):
@@ -540,13 +533,12 @@ def create_professional_slip(employee):
 
 
 # ============================================
-# 6. Routes - المصادقة (Authentication)
+# 7. Routes - المصادقة (Authentication)
 # ============================================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """صفحة تسجيل الدخول"""
-    # إذا كان المستخدم مسجل الدخول بالفعل
     if 'user_id' in session:
         return redirect(url_for('index'))
 
@@ -558,27 +550,23 @@ def login():
             flash('⚠️ Please enter both username and password', 'warning')
             return render_template('login.html')
 
-        # البحث عن المستخدم
         user = User.query.filter_by(username=username).first()
 
         if not user:
             flash('❌ Invalid username or password', 'error')
             return render_template('login.html')
 
-        # التحقق من كلمة المرور
         if user.check_password(password):
             session['user_id'] = user.id
             session['username'] = user.username
             session['full_name'] = user.full_name
             session['is_admin'] = user.is_admin
 
-            # تحديث وقت آخر تسجيل دخول
             user.last_login = datetime.utcnow()
             db.session.commit()
 
             flash(f'✅ Welcome back, {user.full_name or user.username}!', 'success')
 
-            # التحقق من صفحة العودة
             next_page = request.args.get('next')
             if next_page:
                 return redirect(next_page)
@@ -592,7 +580,6 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """صفحة تسجيل حساب جديد"""
-    # إذا كان المستخدم مسجل الدخول بالفعل
     if 'user_id' in session:
         return redirect(url_for('index'))
 
@@ -603,7 +590,6 @@ def register():
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
 
-        # التحقق من صحة البيانات
         if not username or not email or not password:
             flash('⚠️ Please fill in all required fields', 'warning')
             return render_template('register.html')
@@ -620,7 +606,6 @@ def register():
             flash('⚠️ Passwords do not match', 'warning')
             return render_template('register.html')
 
-        # التحقق من عدم وجود اسم مستخدم أو بريد إلكتروني مكرر
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('❌ Username already exists', 'error')
@@ -631,12 +616,11 @@ def register():
             flash('❌ Email already registered', 'error')
             return render_template('register.html')
 
-        # إنشاء المستخدم الجديد
         user = User(
             username=username,
             email=email,
             full_name=full_name or username,
-            is_admin=False  # المستخدم الجديد ليس مديراً
+            is_admin=False
         )
         user.set_password(password)
 
@@ -666,7 +650,7 @@ def profile():
 
 
 # ============================================
-# 7. Routes - الصفحات الرئيسية (محمية)
+# 8. Routes - الصفحات الرئيسية (محمية)
 # ============================================
 
 @app.route('/')
@@ -690,7 +674,6 @@ def upload_file():
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
-            # حفظ الملف
             filename = secure_filename(file.filename)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             unique_filename = f"{timestamp}_{filename}"
@@ -767,7 +750,6 @@ def upload_file():
 
                 db.session.commit()
 
-                # حفظ معلومات الملف
                 file_size = os.path.getsize(filepath)
                 uploaded_file = UploadedFile(
                     filename=unique_filename,
@@ -832,13 +814,11 @@ def file_stats(file_id):
     """عرض إحصائيات ملف معين"""
     uploaded_file = UploadedFile.query.get_or_404(file_id)
 
-    # جلب الموظفين المرتبطين بهذا الملف
     employees = Employee.query.filter_by(
         month=uploaded_file.month,
         year=uploaded_file.year
     ).all()
 
-    # تحويل الموظفين إلى قاموس JSON
     employees_json = []
     for emp in employees:
         employees_json.append({
@@ -853,7 +833,6 @@ def file_stats(file_id):
             'year': emp.year
         })
 
-    # حساب الإحصائيات
     stats = {
         'total_employees': len(employees),
         'total_salary': sum(emp.net_pay for emp in employees),
@@ -884,17 +863,14 @@ def delete_file(file_id):
     uploaded_file = UploadedFile.query.get_or_404(file_id)
 
     try:
-        # حذف الملف الفعلي
         if os.path.exists(uploaded_file.file_path):
             os.remove(uploaded_file.file_path)
 
-        # حذف الموظفين المرتبطين بهذا الشهر والسنة
         Employee.query.filter_by(
             month=uploaded_file.month,
             year=uploaded_file.year
         ).delete()
 
-        # حذف سجل الملف
         db.session.delete(uploaded_file)
         db.session.commit()
 
@@ -1096,7 +1072,7 @@ def generate_selected_slips():
 
 
 @app.route('/delete_all')
-@admin_required  # فقط المدير يمكنه حذف الكل
+@admin_required
 def delete_all():
     """حذف جميع الموظفين"""
     try:
@@ -1149,33 +1125,10 @@ def search_employees():
 
 
 # ============================================
-# 8. إنشاء مستخدم مدير افتراضي (لأول مرة)
-# ============================================
-
-def create_admin_user():
-    """إنشاء مستخدم مدير افتراضي إذا لم يكن موجوداً"""
-    admin = User.query.filter_by(username='admin').first()
-    if not admin:
-        admin = User(
-            username='admin',
-            email='admin@example.com',
-            full_name='System Administrator',
-            is_admin=True
-        )
-        admin.set_password('admin123')  # كلمة المرور الافتراضية
-        db.session.add(admin)
-        db.session.commit()
-        print('✅ Admin user created: admin / admin123')
-    else:
-        print('✅ Admin user already exists')
-
-
-# ============================================
 # 9. تشغيل التطبيق
 # ============================================
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        create_admin_user()  # إنشاء مدير افتراضي
     app.run(debug=True, host='0.0.0.0', port=5000)
