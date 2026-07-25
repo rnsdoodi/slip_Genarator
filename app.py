@@ -54,34 +54,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('static', exist_ok=True)
 
 # ===== إنشاء الجداول والمستخدم المدير (سيُنفذ مع أي بدء تشغيل) =====
-with app.app_context():
-    try:
-        db.create_all()
-        print('✅ Database tables created/verified')
+
         
-        # إنشاء المستخدم المدير
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(
-                username='admin',
-                email='admin@example.com',
-                full_name='System Administrator',
-                is_admin=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-            db.session.commit()
-            print('=' * 50)
-            print('✅ Admin user created successfully!')
-            print('   👤 Username: admin')
-            print('   🔑 Password: admin123')
-            print('=' * 50)
-        else:
-            print('ℹ️ Admin user already exists')
-    except Exception as e:
-        print(f'⚠️ Error initializing database: {e}')
-        import traceback
-        traceback.print_exc()
 
 # ... باقي الكود (نماذج، دوال، Routes) ...
 
@@ -191,6 +165,11 @@ class UploadedFile(db.Model):
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     user = db.relationship('User', backref=db.backref('uploads', lazy=True))
+
+    with app.app_context():
+        try:
+            db.create_all()
+            print('✅ Database tables created/verified')
 
 # ============================================
 # 3. دوال المصادقة (Authentication)
