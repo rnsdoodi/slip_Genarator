@@ -192,6 +192,11 @@ class UploadedFile(db.Model):
 
     user = db.relationship('User', backref=db.backref('uploads', lazy=True))
 
+with app.app_context():
+    try:
+        db.create_all()
+        print('✅ Database tables created/verified')
+
 # ============================================
 # 3. دوال المصادقة (Authentication)
 # ============================================
