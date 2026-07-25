@@ -49,16 +49,15 @@ app.config['ALLOWED_EXTENSIONS'] = {'xlsx', 'xls'}
 
 db = SQLAlchemy(app)
 
-# إنشاء المجلدات
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('static', exist_ok=True)
+# ============================================
+# إنشاء الجداول والمستخدم المدير تلقائياً
+# ============================================
 
-# ===== إنشاء الجداول والمستخدم المدير (سيُنفذ مع أي بدء تشغيل) =====
 with app.app_context():
     try:
         db.create_all()
         print('✅ Database tables created/verified')
-        
+
         # إنشاء المستخدم المدير
         admin = User.query.filter_by(username='admin').first()
         if not admin:
@@ -81,9 +80,14 @@ with app.app_context():
     except Exception as e:
         print(f'⚠️ Error initializing database: {e}')
         import traceback
+
         traceback.print_exc()
 
-# ... باقي الكود (نماذج، دوال، Routes) ...
+# إنشاء المجلدات
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs('static', exist_ok=True)
+
+
 
 # ============================================
 # 2. نماذج قاعدة البيانات
