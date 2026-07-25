@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Details</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .card { border: 1px solid #ddd; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .label { font-weight: bold; color: #555; }
+        .value { color: #333; }
+        .btn { display: inline-block; padding: 10px 20px; margin: 5px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+        .btn-success { background: #28a745; }
+        .back { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .salary-total { background: #e7f3ff; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        h2 { color: #333; }
+        h3 { color: #007bff; }
+        h4 { color: #555; margin-bottom: 10px; }
+        .badge {
+            background: #e7f3ff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #007bff;
+        }
+        .highlight {
+            background: #d4edda;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #155724;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>👤 Employee Details</h2>
+
+        <!-- ===== معلومات الموظف الأساسية ===== -->
+        <div class="card">
+            <h4>📋 Personal Information</h4>
+            <div class="detail-row"><span class="label">Employee No.:</span><span class="value"><strong>{{ employee.emp_no }}</strong></span></div>
+            <div class="detail-row"><span class="label">Name:</span><span class="value">{{ employee.name }}</span></div>
+            <div class="detail-row"><span class="label">Designation:</span><span class="value">{{ employee.designation or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Nationality:</span><span class="value">{{ employee.nationality or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Gender:</span><span class="value">{{ employee.gender or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Date of Birth:</span><span class="value">{{ employee.date_of_birth or '---' }}</span></div>
+        </div>
+
+        <!-- ===== معلومات العمل ===== -->
+        <div class="card">
+            <h4>🏢 Work Information</h4>
+            <div class="detail-row"><span class="label">Client Name:</span><span class="value"><strong>{{ employee.project_name or '---' }}</strong></span></div>
+            <div class="detail-row"><span class="label">Division:</span><span class="value"><span class="badge">{{ employee.division or '---' }}</span></span></div>
+            <div class="detail-row"><span class="label">Location:</span><span class="value">{{ employee.location or '---' }}</span></div>
+            <div class="detail-row"><span class="label">SAP ID:</span><span class="value">{{ employee.sap_id or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Sponsor Name:</span><span class="value">{{ employee.sponsor_name or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Pay Group:</span><span class="value">{{ employee.pay_group or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Status:</span><span class="value"><span class="highlight">{{ employee.status or '---' }}</span></span></div>
+        </div>
+
+        <!-- ===== التواريخ ===== -->
+        <div class="card">
+            <h4>📅 Dates</h4>
+            <div class="grid-3">
+                <div class="detail-row"><span class="label">Hire Date:</span><span class="value">{{ employee.hire_date or '---' }}</span></div>
+                <div class="detail-row"><span class="label">End Date:</span><span class="value">{{ employee.end_employment_date or '---' }}</span></div>
+                <div class="detail-row"><span class="label">Month:</span><span class="value">{{ employee.month }} {{ employee.year }}</span></div>
+            </div>
+        </div>
+
+        <!-- ===== تفاصيل الراتب ===== -->
+        <div class="salary-total">
+            <h3>💰 Salary Details</h3>
+            <div class="grid-2">
+                <div class="detail-row"><span class="label">Basic Salary:</span><span class="value">{{ "%.2f"|format(employee.basic_salary) }}</span></div>
+                <div class="detail-row"><span class="label">Basic Salary Arrears:</span><span class="value">{{ "%.2f"|format(employee.basic_salary_arrears) }}</span></div>
+                <div class="detail-row"><span class="label">Housing Allowance:</span><span class="value">{{ "%.2f"|format(employee.housing_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Housing Allowance Arrears:</span><span class="value">{{ "%.2f"|format(employee.housing_allowance_arrears) }}</span></div>
+                <div class="detail-row"><span class="label">Food Allowance:</span><span class="value">{{ "%.2f"|format(employee.food_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Transportation Allowance:</span><span class="value">{{ "%.2f"|format(employee.transportation_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Transportation Allowance Arrears:</span><span class="value">{{ "%.2f"|format(employee.transportation_allowance_arrears) }}</span></div>
+                <div class="detail-row"><span class="label">Mobile Allowance:</span><span class="value">{{ "%.2f"|format(employee.mobile_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Other Allowance:</span><span class="value">{{ "%.2f"|format(employee.other_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Other Allowance Arrears:</span><span class="value">{{ "%.2f"|format(employee.other_allowance_arrears) }}</span></div>
+                <div class="detail-row"><span class="label">Project Fix Allowance:</span><span class="value">{{ "%.2f"|format(employee.project_fix_allowance) }}</span></div>
+                <div class="detail-row"><span class="label">Project Fix Allowance Arrears:</span><span class="value">{{ "%.2f"|format(employee.project_fix_allowance_arrears) }}</span></div>
+                <div class="detail-row"><span class="label">Overtime:</span><span class="value">{{ "%.2f"|format(employee.overtime) }}</span></div>
+                <div class="detail-row"><span class="label">Salary Adjustment:</span><span class="value">{{ "%.2f"|format(employee.salary_adjustment) }}</span></div>
+                <div class="detail-row"><span class="label">Leave Salary Benefits:</span><span class="value">{{ "%.2f"|format(employee.leave_salary_benefits) }}</span></div>
+                <div class="detail-row" style="border-top: 2px solid #007bff; padding-top: 10px; grid-column: span 2;">
+                    <span class="label">Total Gross:</span>
+                    <span class="value" style="font-weight: bold; color: #007bff;">{{ "%.2f"|format(employee.total_gross) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== الخصومات ===== -->
+        <div class="card">
+            <h4>📉 Deductions</h4>
+            <div class="grid-2">
+                <div class="detail-row"><span class="label">GOSI Contribution:</span><span class="value">{{ "%.2f"|format(employee.gosi_contribution) }}</span></div>
+                <div class="detail-row"><span class="label">Other Deductions:</span><span class="value">{{ "%.2f"|format(employee.other_deductions) }}</span></div>
+                <div class="detail-row"><span class="label">Absenteeism:</span><span class="value">{{ "%.2f"|format(employee.absenteeism) }}</span></div>
+                <div class="detail-row"><span class="label">Advance Payment Recovery:</span><span class="value">{{ "%.2f"|format(employee.advance_payment_recovery) }}</span></div>
+                <div class="detail-row" style="border-top: 2px solid #dc3545; padding-top: 10px; grid-column: span 2;">
+                    <span class="label">Total Deductions:</span>
+                    <span class="value" style="font-weight: bold; color: #dc3545;">{{ "%.2f"|format(employee.total_deductions) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== صافي الراتب ===== -->
+        <div class="card" style="border: 2px solid #28a745; background: #f8fff8;">
+            <div class="detail-row" style="font-weight: bold; font-size: 1.3em; border-bottom: none; padding: 10px 0;">
+                <span class="label">💰 Net Pay:</span>
+                <span class="value" style="color: #28a745; font-size: 1.4em;">{{ "%.2f"|format(employee.net_pay) }}</span>
+            </div>
+        </div>
+
+        <!-- ===== معلومات البنك ===== -->
+        <div class="card">
+            <h4>🏦 Bank Information</h4>
+            <div class="detail-row"><span class="label">Bank Name:</span><span class="value">{{ employee.bank_name or '---' }}</span></div>
+            <div class="detail-row"><span class="label">IBAN:</span><span class="value"><strong>{{ employee.iban or '---' }}</strong></span></div>
+            <div class="detail-row"><span class="label">Invoice Reference:</span><span class="value">{{ employee.invoice_reference or '---' }}</span></div>
+            <div class="detail-row"><span class="label">Salary Released On:</span><span class="value">{{ employee.salary_released_on or '---' }}</span></div>
+        </div>
+
+        <!-- ===== الأزرار ===== -->
+        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ url_for('generate_slip', emp_id=employee.id) }}" class="btn btn-success">📄 Generate Slip</a>
+            <a href="{{ url_for('view_employees') }}" class="btn">← Back to List</a>
+        </div>
+
+        <a href="{{ url_for('index') }}" class="back">← Back to Home</a>
+    </div>
+</body>
+</html>

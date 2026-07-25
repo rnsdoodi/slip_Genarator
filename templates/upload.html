@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Excel File</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="file"], input[type="text"], input[type="number"], select {
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 12px 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .back { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-right: 4px solid #007bff;
+        }
+        .flash { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        h2 { color: #333; }
+        .required { color: red; }
+        .form-row { display: flex; gap: 20px; }
+        .form-row .form-group { flex: 1; }
+
+        /* ===== مؤشر التقدم ===== */
+        .progress-container {
+            display: none;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .progress-container.active {
+            display: block;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .progress-title {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 15px;
+        }
+        .progress-percentage {
+            font-weight: 700;
+            color: #007bff;
+            font-size: 18px;
+        }
+        .progress-bar-bg {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #00d4ff);
+            border-radius: 15px;
+            transition: width 0.3s ease;
+            width: 0%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .progress-bar-fill.success {
+            background: linear-gradient(90deg, #28a745, #20c997);
+        }
+        .progress-bar-fill.error {
+            background: linear-gradient(90deg, #dc3545, #ff6b6b);
+        }
+        .progress-status {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #718096;
+        }
+        .progress-status .icon {
+            margin-right: 5px;
+        }
+        .progress-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #a0aec0;
+        }
+        .file-info {
+            display: none;
+            margin: 10px 0;
+            padding: 10px 15px;
+            background: #e7f3ff;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .file-info.visible {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .form-row { flex-direction: column; gap: 0; }
+            .progress-percentage { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📤 Upload Excel File</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="info">
+            <strong>⚠️ Note:</strong> The file must contain the following columns:<br>
+            <strong>Emp No.</strong>, <strong>Name</strong>, <strong>Designation</strong>, <strong>Nationality</strong>,
+            <strong>Project Name</strong>, <strong>Location</strong>, <strong>Hire Date</strong>,<br>
+            <strong>Basic Salary</strong>, <strong>Housing Allowance</strong>, <strong>Transportation Allowance</strong>,
+            <strong>Other Allowance</strong>,<br>
+            <strong>Total Gross</strong>, <strong>GOSI EE Contribution</strong>, <strong>Total Deductions</strong>,
+            <strong>Net Pay</strong>, <strong>BANK NAME</strong>, <strong>IBAN</strong>
+        </div>
+
+        <form id="uploadForm" method="POST" enctype="multipart/form-data">
+            <!-- ملف Excel -->
+            <div class="form-group">
+                <label>Select Excel File <span class="required">*</span></label>
+                <input type="file" id="fileInput" name="file" accept=".xlsx,.xls" required>
+                <div id="fileInfo" class="file-info">
+                    <span id="fileName">📄 No file selected</span>
+                </div>
+            </div>
+
+            <!-- الشهر والسنة في صف واحد -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Month <span class="required">*</span></label>
+                    <select name="month" required>
+                        <option value="January">January</option>
+                        <option value="February">February</option>
+                        <option value="March">March</option>
+                        <option value="April">April</option>
+                        <option value="May">May</option>
+                        <option value="June" selected>June</option>
+                        <option value="July">July</option>
+                        <option value="August">August</option>
+                        <option value="September">September</option>
+                        <option value="October">October</option>
+                        <option value="November">November</option>
+                        <option value="December">December</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Year <span class="required">*</span></label>
+                    <input type="number" name="year" value="2026" min="2000" max="2100" required>
+                </div>
+            </div>
+
+            <button type="submit" id="uploadBtn" class="btn">🚀 Upload File</button>
+        </form>
+
+        <!-- ===== مؤشر التقدم ===== -->
+        <div id="progressContainer" class="progress-container">
+            <div class="progress-header">
+                <span class="progress-title">📤 Uploading...</span>
+                <span class="progress-percentage" id="progressPercentage">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressFill" style="width: 0%;"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">
+                <span class="icon">⏳</span>
+                <span id="progressMessage">Preparing to upload...</span>
+            </div>
+            <div class="progress-details">
+                <span id="progressFileInfo">📄 File: None</span>
+                <span id="progressSizeInfo">📦 Size: 0 KB</span>
+            </div>
+        </div>
+
+        <a href="{{ url_for('index') }}" class="back">← Back to Home</a>
+    </div>
+
+    <script>
+        // ===== عناصر الصفحة =====
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const progressStatus = document.getElementById('progressStatus');
+        const progressMessage = document.getElementById('progressMessage');
+        const progressFileInfo = document.getElementById('progressFileInfo');
+        const progressSizeInfo = document.getElementById('progressSizeInfo');
+
+        // ===== عرض معلومات الملف عند الاختيار =====
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const sizeKB = (file.size / 1024).toFixed(1);
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                const sizeDisplay = file.size > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+
+                fileInfo.classList.add('visible');
+                fileName.textContent = `📄 ${file.name} (${sizeDisplay})`;
+
+                // تحديث معلومات الملف في مؤشر التقدم
+                progressFileInfo.textContent = `📄 File: ${file.name}`;
+                progressSizeInfo.textContent = `📦 Size: ${sizeDisplay}`;
+            } else {
+                fileInfo.classList.remove('visible');
+                fileName.textContent = '📄 No file selected';
+            }
+        });
+
+        // ===== تحديث مؤشر التقدم =====
+        function updateProgress(percentage, message, status = 'uploading') {
+            const fill = document.getElementById('progressFill');
+            const percentageEl = document.getElementById('progressPercentage');
+            const messageEl = document.getElementById('progressMessage');
+
+            // تحديث العرض
+            fill.style.width = percentage + '%';
+            percentageEl.textContent = percentage + '%';
+            messageEl.textContent = message;
+
+            // تغيير اللون حسب الحالة
+            fill.classList.remove('success', 'error');
+            if (status === 'complete') {
+                fill.classList.add('success');
+                document.querySelector('.progress-title').textContent = '✅ Upload Complete!';
+                document.getElementById('progressStatus').querySelector('.icon').textContent = '✅';
+            } else if (status === 'error') {
+                fill.classList.add('error');
+                document.querySelector('.progress-title').textContent = '❌ Upload Failed';
+                document.getElementById('progressStatus').querySelector('.icon').textContent = '❌';
+            } else {
+                document.querySelector('.progress-title').textContent = '📤 Uploading...';
+                document.getElementById('progressStatus').querySelector('.icon').textContent = '⏳';
+            }
+        }
+
+        // ===== إظهار مؤشر التقدم =====
+        function showProgress() {
+            progressContainer.classList.add('active');
+            updateProgress(0, 'Starting upload...');
+        }
+
+        // ===== إخفاء مؤشر التقدم =====
+        function hideProgress() {
+            progressContainer.classList.remove('active');
+        }
+
+        // ===== إعادة تعيين النموذج =====
+        function resetForm() {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = '🚀 Upload File';
+        }
+
+        // ===== اعتراض تقديم النموذج =====
+        uploadForm.addEventListener('submit', function(e) {
+            // التحقق من وجود ملف
+            if (!fileInput.files || !fileInput.files[0]) {
+                alert('⚠️ Please select a file to upload');
+                e.preventDefault();
+                return;
+            }
+
+            // إظهار مؤشر التقدم
+            showProgress();
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Uploading...';
+
+            // محاكاة التقدم (سيتم استبدالها بالتقدم الفعلي من السيرفر)
+            let progress = 0;
+            const steps = [
+                { p: 10, msg: '📤 Reading file...' },
+                { p: 25, msg: '📊 Parsing data...' },
+                { p: 45, msg: '🔄 Processing records...' },
+                { p: 65, msg: '💾 Saving to database...' },
+                { p: 85, msg: '✅ Finalizing...' },
+            ];
+
+            let currentStep = 0;
+
+            // تحديث التقدم بشكل تدريجي (محاكاة)
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    const step = steps[currentStep];
+                    updateProgress(step.p, step.msg);
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 1200);
+
+            // عند اكتمال التحميل (سيتم استبداله بالاستجابة الفعلية)
+            // ملاحظة: هذا مجرد محاكاة، التقدم الحقيقي سيأتي من السيرفر
+        });
+
+        // ===== إضافة دعم للسحب والإفلات (Drag & Drop) =====
+        const dropZone = document.querySelector('.form-group');
+
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#007bff';
+            this.style.background = '#f0f7ff';
+        });
+
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#ddd';
+            this.style.background = '';
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#ddd';
+            this.style.background = '';
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                // تشغيل حدث change
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+            }
+        });
+
+        // ===== استكمال التقدم عند اكتمال التحميل =====
+        // سيتم استدعاؤها من خلال الاستجابة من السيرفر
+        window.completeUpload = function(success, message) {
+            if (success) {
+                updateProgress(100, message || '✅ Upload completed successfully!', 'complete');
+            } else {
+                updateProgress(100, message || '❌ Upload failed!', 'error');
+            }
+            resetForm();
+
+            // إعادة التوجيه بعد 2 ثانية
+            setTimeout(() => {
+                if (success) {
+                    window.location.href = '/uploaded-files';
+                } else {
+                    hideProgress();
+                    resetForm();
+                }
+            }, 2000);
+        };
+
+        // ===== تحديث التقدم من السيرفر =====
+        // يمكن استدعاؤها من خلال WebSocket أو SSE
+        window.updateUploadProgress = function(percentage, message) {
+            updateProgress(percentage, message);
+        };
+
+        console.log('📤 Upload page loaded successfully!');
+        console.log('💡 Tip: You can drag and drop files onto the upload area.');
+    </script>
+
+    <style>
+        /* ===== تحسينات إضافية للسحب والإفلات ===== */
+        .form-group.drag-over {
+            border-color: #007bff !important;
+            background: #f0f7ff !important;
+            border-style: solid !important;
+        }
+        .form-group .drop-hint {
+            display: none;
+            color: #007bff;
+            font-weight: 600;
+        }
+        .form-group.drag-over .drop-hint {
+            display: block;
+        }
+    </style>
+</body>
+</html>

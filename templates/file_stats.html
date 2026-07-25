@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .stat-card.green .number { color: #28a745; }
+        .stat-card.orange .number { color: #fd7e14; }
+        .stat-card.red .number { color: #dc3545; }
+        .stat-card.purple .number { color: #6f42c1; }
+        .stat-card.teal .number { color: #20c997; }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            opacity: 0.85;
+            transform: translateY(-2px);
+        }
+        .btn-success { background: #28a745; }
+        .btn-info { background: #17a2b8; }
+        .btn-warning { background: #ffc107; color: #333; }
+
+        .back { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .file-info {
+            background: linear-gradient(135deg, #e7f3ff 0%, #f0f7ff 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 4px solid #007bff;
+        }
+        .file-info h3 { margin: 0; color: #007bff; font-size: 20px; }
+        .file-info p { margin: 8px 0 0; color: #555; }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 30px 0;
+        }
+        .chart-box {
+            background: #fafbfc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+        .chart-box h4 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .chart-box canvas {
+            max-height: 300px;
+            max-width: 100%;
+        }
+
+        /* ===== جدول العملاء ===== */
+        .client-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .client-table th, .client-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .client-table th {
+            background: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+        }
+        .client-table tr:hover { background: #f8f9fa; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4e73df, #36b9cc);
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+        .progress-bar .label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+        }
+        .chart-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .chart-selector button {
+            padding: 6px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .chart-selector button:hover {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+        .chart-selector button.active {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #007bff;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover { background: #f8f9fa; }
+        tr:last-child td { border-bottom: none; }
+
+        .flash { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+        @media (max-width: 900px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        @media (max-width: 600px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-card .number { font-size: 20px; }
+            .container { padding: 15px; }
+            th, td { padding: 8px 10px; font-size: 13px; }
+        }
+        @media (max-width: 400px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📊 File Statistics</h2>
+
+        <div class="file-info">
+            <h3>📄 {{ stats.filename }}</h3>
+            <p>
+                <strong>📅 Month:</strong> {{ stats.month }} {{ stats.year }} &nbsp;|&nbsp;
+                <strong>📤 Uploaded:</strong> {{ stats.upload_date.strftime('%Y-%m-%d %H:%M') }}
+            </p>
+        </div>
+
+        <!-- ===== بطاقات الإحصائيات ===== -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number">{{ stats.total_employees }}</div>
+                <div class="label">👥 Total Employees</div>
+            </div>
+            <div class="stat-card green">
+                <div class="number">{{ "%.2f"|format(stats.total_salary) }}</div>
+                <div class="label">💰 Total Salaries</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="number">{{ "%.2f"|format(stats.avg_salary) }}</div>
+                <div class="label">📊 Average Salary</div>
+            </div>
+            <div class="stat-card teal">
+                <div class="number">{{ stats.divisions }}</div>
+                <div class="label">📂 Divisions</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="number">{{ stats.clients }}</div>
+                <div class="label">🏢 Clients</div>
+            </div>
+        </div>
+
+        <!-- ===== المخططات ===== -->
+        <div class="charts-row">
+            <!-- Division Charts -->
+            <div class="chart-box">
+                <h4>📊 Division Distribution</h4>
+                <canvas id="divisionPieChart"></canvas>
+            </div>
+
+            <div class="chart-box">
+                <h4>💰 Salary by Division</h4>
+                <canvas id="divisionBarChart"></canvas>
+            </div>
+
+            <!-- Client Charts - مع خيارات متعددة -->
+            <div class="chart-box" style="grid-column: 1 / -1;">
+                <h4>🏢 Client Distribution</h4>
+
+                <!-- أزرار اختيار نوع المخطط -->
+                <div class="chart-selector">
+                    <button class="active" data-chart="bar" onclick="switchChart('bar')">📊 Bar Chart</button>
+                    <button data-chart="horizontal" onclick="switchChart('horizontal')">📊 Horizontal Bar</button>
+                    <button data-chart="doughnut" onclick="switchChart('doughnut')">🍩 Doughnut</button>
+                    <button data-chart="pie" onclick="switchChart('pie')">🥧 Pie</button>
+                    <button data-chart="table" onclick="switchChart('table')">📋 Table View</button>
+                </div>
+
+                <!-- حاوية المخطط -->
+                <div id="clientChartContainer">
+                    <canvas id="clientChart"></canvas>
+                </div>
+
+                <!-- حاوية الجدول (مخفية افتراضياً) -->
+                <div id="clientTableContainer" style="display: none;">
+                    <table class="client-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Client Name</th>
+                                <th>Employees</th>
+                                <th>Percentage</th>
+                                <th>Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div style="margin-top: 25px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ url_for('download_file', file_id=stats.file_id) }}" class="btn btn-success">📥 Download File</a>
+            <a href="{{ url_for('uploaded_files') }}" class="btn btn-info">📁 Back to Files</a>
+            <a href="{{ url_for('index') }}" class="back">← Back to Home</a>
+        </div>
+    </div>
+
+    <!-- ===== JavaScript ===== -->
+    <script>
+        let clientChart = null;
+        let clientData = {};
+        let clientLabels = [];
+        let clientCounts = [];
+        const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#fd7e14', '#6f42c1', '#20c997', '#e83e8c', '#6c757d'];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const employees = {{ employees_json|tojson|safe }};
+
+            // ===== تجميع بيانات العملاء =====
+            const clientDataTemp = {};
+            employees.forEach(emp => {
+                const client = emp.project_name || 'No Client';
+                clientDataTemp[client] = (clientDataTemp[client] || 0) + 1;
+            });
+
+            // ترتيب العملاء تنازلياً
+            const sorted = Object.entries(clientDataTemp).sort((a, b) => b[1] - a[1]);
+            clientLabels = sorted.map(item => item[0]);
+            clientCounts = sorted.map(item => item[1]);
+            clientData = clientDataTemp;
+
+            // ===== تجميع بيانات الأقسام =====
+            const divisionData = {};
+            const divisionSalary = {};
+            employees.forEach(emp => {
+                const div = emp.division || 'No Division';
+                divisionData[div] = (divisionData[div] || 0) + 1;
+                divisionSalary[div] = (divisionSalary[div] || 0) + parseFloat(emp.net_pay || 0);
+            });
+
+            const divisionLabels = Object.keys(divisionData);
+            const divisionCounts = Object.values(divisionData);
+            const divisionSalaries = Object.values(divisionSalary);
+
+            // ===== 1. Division Pie Chart =====
+            if (divisionLabels.length > 0) {
+                const ctx1 = document.getElementById('divisionPieChart').getContext('2d');
+                new Chart(ctx1, {
+                    type: 'pie',
+                    data: {
+                        labels: divisionLabels,
+                        datasets: [{
+                            data: divisionCounts,
+                            backgroundColor: colors.slice(0, divisionLabels.length),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 10, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                        return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ===== 2. Division Salary Bar Chart =====
+            if (divisionLabels.length > 0) {
+                const ctx2 = document.getElementById('divisionBarChart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: divisionLabels,
+                        datasets: [{
+                            label: 'Total Salary (SAR)',
+                            data: divisionSalaries,
+                            backgroundColor: colors.slice(0, divisionLabels.length),
+                            borderColor: colors.slice(0, divisionLabels.length),
+                            borderWidth: 1,
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `SAR ${context.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'SAR ' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ===== 3. Client Chart (افتراضي Bar) =====
+            createClientChart('bar');
+            populateClientTable();
+        });
+
+        // ===== إنشاء مخطط العملاء =====
+        function createClientChart(type) {
+            const ctx = document.getElementById('clientChart').getContext('2d');
+
+            // تدمير المخطط السابق
+            if (clientChart) {
+                clientChart.destroy();
+            }
+
+            // إظهار/إخفاء الحاويات
+            document.getElementById('clientChartContainer').style.display = type === 'table' ? 'none' : 'block';
+            document.getElementById('clientTableContainer').style.display = type === 'table' ? 'block' : 'none';
+
+            if (type === 'table') {
+                populateClientTable();
+                return;
+            }
+
+            const chartType = type === 'horizontal' ? 'bar' : type;
+
+            // إعدادات المخطط
+            const options = {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: type === 'pie' || type === 'doughnut' ? 'bottom' : 'top',
+                        labels: {
+                            padding: 10,
+                            font: { size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if (type === 'pie' || type === 'doughnut') {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${context.label}: ${context.parsed} (${percentage}%)`;
+                                } else {
+                                    return `${context.label}: ${context.parsed}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            // إعدادات إضافية للـ Bar Charts
+            if (type === 'bar' || type === 'horizontal') {
+                options.scales = {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                };
+                options.indexAxis = type === 'horizontal' ? 'y' : 'x';
+                options.plugins.legend.display = false;
+            }
+
+            // إنشاء المخطط
+            clientChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: clientLabels,
+                    datasets: [{
+                        label: 'Number of Employees',
+                        data: clientCounts,
+                        backgroundColor: colors.slice(0, clientLabels.length),
+                        borderColor: colors.slice(0, clientLabels.length),
+                        borderWidth: 2,
+                        borderRadius: type === 'bar' || type === 'horizontal' ? 5 : 0,
+                        borderAlign: 'inner'
+                    }]
+                },
+                options: options
+            });
+        }
+
+        // ===== عرض جدول العملاء =====
+        function populateClientTable() {
+            const total = clientCounts.reduce((a, b) => a + b, 0);
+            const tbody = document.getElementById('clientTableBody');
+            tbody.innerHTML = '';
+
+            clientLabels.forEach((label, index) => {
+                const count = clientCounts[index];
+                const percentage = ((count / total) * 100).toFixed(1);
+                const color = colors[index % colors.length];
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td><strong>${label}</strong></td>
+                    <td>${count}</td>
+                    <td>${percentage}%</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="fill" style="width: ${percentage}%; background: ${color};"></div>
+                            <div class="label">${percentage}%</div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ===== تبديل نوع المخطط =====
+        function switchChart(type) {
+            // تحديث الأزرار
+            document.querySelectorAll('.chart-selector button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-chart="${type}"]`).classList.add('active');
+
+            createClientChart(type);
+        }
+    </script>
+</body>
+</html>

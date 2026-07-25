@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Employees List</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1400px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px; }
+        th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #007bff; color: white; position: sticky; top: 0; }
+        tr:hover { background: #f5f5f5; }
+
+        /* ===== Dropdown Menu ===== */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #555;
+            line-height: 1;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .dropdown-btn:hover {
+            background: #e9ecef;
+            color: #007bff;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: white;
+            min-width: 170px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            z-index: 100;
+            padding: 6px 0;
+            border: 1px solid #e9ecef;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .dropdown-content a:hover {
+            background: #f0f4f8;
+        }
+        .dropdown-content a .icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+        }
+        .dropdown-content a .label {
+            flex: 1;
+        }
+
+        .btn { display: inline-block; padding: 5px 10px; margin: 2px; background: #007bff; color: white; text-decoration: none; border-radius: 3px; font-size: 12px; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+        .search-box {
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .search-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 180px;
+        }
+        .search-group label {
+            font-weight: bold;
+            font-size: 13px;
+            color: #555;
+        }
+        .search-group input,
+        .search-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .search-group input:focus,
+        .search-group select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        .search-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding-bottom: 2px;
+        }
+        .search-actions button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            height: 42px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .search-actions button:hover { background: #0056b3; }
+
+        /* ===== Clear All Button - نفس حجم زر Apply ===== */
+        .clear-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            height: 25px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .clear-btn:hover {
+            background: #c82333;
+        }
+        .clear-btn .icon {
+            font-size: 14px;
+        }
+
+        .stats {
+            background: #e7f3ff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stats-item { font-size: 15px; }
+        .stats-item strong { color: #007bff; }
+        .stats-total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .filter-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+        .filter-tag {
+            background: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-tag .remove {
+            cursor: pointer;
+            color: #dc3545;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .filter-tag .remove:hover { color: #bd2130; }
+
+        .back { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .flash { padding: 12px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+        .pagination { display: flex; justify-content: center; gap: 5px; margin: 20px 0; flex-wrap: wrap; }
+        .pagination a, .pagination span {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #007bff;
+            font-size: 14px;
+        }
+        .pagination a:hover { background: #007bff; color: white; }
+        .pagination .active { background: #007bff; color: white; border-color: #007bff; }
+        .pagination .disabled { color: #999; cursor: not-allowed; }
+
+        .table-container { overflow-x: auto; max-height: 600px; overflow-y: auto; }
+
+        @media (max-width: 768px) {
+            table { font-size: 11px; }
+            th, td { padding: 4px 6px; }
+            .search-box { flex-direction: column; }
+            .search-group { min-width: 100%; }
+            .search-actions { flex-wrap: wrap; }
+            .search-actions button { flex: 1; }
+            .stats { flex-direction: column; align-items: flex-start; }
+            .dropdown-content { right: auto; left: 0; min-width: 140px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>👥 Employees List</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="stats">
+            <span class="stats-item">
+                <strong>👥 Total Employees:</strong> {{ total }}
+            </span>
+            <span class="stats-item">
+                <strong>💰 Total Salaries:</strong>
+                <span class="stats-total">{{ "%.2f"|format(total_net_pay_all) }}</span>
+            </span>
+            {% if search_query or filter_division or filter_client %}
+            <span class="stats-item" style="color: #856404;">
+                🔍 Filtered
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Filter Tags -->
+        {% if search_query or filter_division or filter_client %}
+        <div class="filter-tags">
+            {% if search_query %}
+            <span class="filter-tag">
+                🔍 Search: "{{ search_query }}"
+                <a href="{{ url_for('view_employees', page=page, filter_division=filter_division, filter_client=filter_client) }}" class="remove">✕</a>
+            </span>
+            {% endif %}
+            {% if filter_division %}
+            <span class="filter-tag">
+                📂 Division: {{ filter_division }}
+                <a href="{{ url_for('view_employees', page=page, q=search_query, filter_client=filter_client) }}" class="remove">✕</a>
+            </span>
+            {% endif %}
+            {% if filter_client %}
+            <span class="filter-tag">
+                🏢 Client: {{ filter_client }}
+                <a href="{{ url_for('view_employees', page=page, q=search_query, filter_division=filter_division) }}" class="remove">✕</a>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Search Box with Filters -->
+        <form method="GET" action="{{ url_for('view_employees') }}">
+            <div class="search-box">
+                <!-- Search Text -->
+                <div class="search-group">
+                    <label for="q">🔍 Search</label>
+                    <input type="text" id="q" name="q" placeholder="Search by name, emp no..." value="{{ search_query or '' }}">
+                </div>
+
+                <!-- Filter by Division -->
+                <div class="search-group">
+                    <label for="filter_division">📂 Division</label>
+                    <select id="filter_division" name="filter_division">
+                        <option value="">All Divisions</option>
+                        {% for div in divisions %}
+                        <option value="{{ div }}" {% if filter_division == div %}selected{% endif %}>{{ div }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Filter by Client Name -->
+                <div class="search-group">
+                    <label for="filter_client">🏢 Client Name</label>
+                    <select id="filter_client" name="filter_client">
+                        <option value="">All Clients</option>
+                        {% for client in clients %}
+                        <option value="{{ client }}" {% if filter_client == client %}selected{% endif %}>{{ client }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <div class="search-actions">
+                    <button type="submit">🔍 Apply</button>
+                    <a href="{{ url_for('view_employees') }}" class="clear-btn">
+                        ✕ Clear
+                    </a>
+                </div>
+            </div>
+        </form>
+
+        <!-- Table -->
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Emp No.</th>
+                        <th>Name</th>
+                        <th>Division</th>
+                        <th>Client Name</th>
+                        <th>Designation</th>
+                        <th>Location</th>
+                        <th>Net Pay</th>
+                        <th>Month</th>
+                        <th style="text-align: center; width: 60px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td>{{ loop.index + (page - 1) * 15 }}</td>
+                        <td>{{ emp.emp_no }}</td>
+                        <td>{{ emp.name[:25] + '...' if emp.name|length > 25 else emp.name }}</td>
+                        <td><span style="background: #e7f3ff; padding: 2px 8px; border-radius: 10px; font-size: 11px;">{{ emp.division or '---' }}</span></td>
+                        <td>{{ emp.project_name[:30] + '...' if emp.project_name|length > 30 else emp.project_name }}</td>
+                        <td>{{ emp.designation[:20] + '...' if emp.designation|length > 20 else emp.designation }}</td>
+                        <td>{{ emp.location }}</td>
+                        <td><strong>{{ "%.2f"|format(emp.net_pay) }}</strong></td>
+                        <td>{{ emp.month }} {{ emp.year }}</td>
+                        <td style="text-align: center;">
+                            <!-- Dropdown Menu (ثلاث نقاط) -->
+                            <div class="dropdown">
+                                <button class="dropdown-btn" onclick="toggleDropdown(this)" title="Actions">⋮</button>
+                                <div class="dropdown-content">
+                                    <a href="{{ url_for('employee_detail', emp_id=emp.id) }}">
+                                        <span class="icon">👁️</span>
+                                        <span class="label">View Details</span>
+                                    </a>
+                                    <a href="{{ url_for('generate_slip', emp_id=emp.id) }}">
+                                        <span class="icon">📄</span>
+                                        <span class="label">Generate Slip</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px;">⚠️ No employees found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="{{ url_for('view_employees', page=page-1, q=search_query, filter_division=filter_division, filter_client=filter_client) }}">← Previous</a>
+            {% else %}
+                <span class="disabled">← Previous</span>
+            {% endif %}
+
+            {% for p in range(1, total_pages + 1) %}
+                {% if p == page %}
+                    <span class="active">{{ p }}</span>
+                {% elif p <= 5 or p > total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+                    <a href="{{ url_for('view_employees', page=p, q=search_query, filter_division=filter_division, filter_client=filter_client) }}">{{ p }}</a>
+                {% elif p == 6 or p == total_pages - 2 %}
+                    <span>...</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if page < total_pages %}
+                <a href="{{ url_for('view_employees', page=page+1, q=search_query, filter_division=filter_division, filter_client=filter_client) }}">Next →</a>
+            {% else %}
+                <span class="disabled">Next →</span>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <a href="{{ url_for('all_slips') }}" class="btn btn-warning" style="padding: 10px 20px;">📄 Generate All Slips</a>
+            <a href="{{ url_for('delete_all') }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete all employees?')" style="padding: 10px 20px;">🗑️ Delete All</a>
+        </div>
+
+        <a href="{{ url_for('index') }}" class="back">← Back to Home</a>
+    </div>
+
+    <!-- ===== JavaScript لتشغيل القائمة المنسدلة ===== -->
+    <script>
+        function toggleDropdown(button) {
+            event.stopPropagation();
+            var dropdown = button.parentElement;
+            var content = dropdown.querySelector('.dropdown-content');
+
+            // إغلاق جميع القوائم المفتوحة الأخرى
+            document.querySelectorAll('.dropdown-content.show').forEach(function(el) {
+                if (el !== content) {
+                    el.classList.remove('show');
+                }
+            });
+
+            // تبديل القائمة الحالية
+            content.classList.toggle('show');
+        }
+
+        // إغلاق القائمة عند النقر خارجها
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-content.show').forEach(function(el) {
+                    el.classList.remove('show');
+                });
+            }
+        });
+
+        // إغلاق القائمة عند الضغط على Escape
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.dropdown-content.show').forEach(function(el) {
+                    el.classList.remove('show');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

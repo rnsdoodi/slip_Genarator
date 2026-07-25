@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>All Slips</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+
+        /* ===== Filter Bar ===== */
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 180px;
+        }
+        .filter-group label {
+            font-weight: bold;
+            font-size: 13px;
+            color: #555;
+        }
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+            background: white;
+        }
+        .filter-group select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding-bottom: 2px;
+        }
+        .filter-actions button {
+            padding: 9px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            height: 40px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .filter-actions button:hover { background: #0056b3; }
+        .filter-actions .clear-btn {
+            background: #dc3545;
+            padding: 9px 20px;
+            height: 40px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .filter-actions .clear-btn:hover { background: #c82333; }
+
+        /* ===== Selection Bar ===== */
+        .selection-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 15px 0;
+            padding: 12px 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+        }
+        .selection-bar .info-text {
+            font-size: 14px;
+            color: #555;
+            flex: 1;
+        }
+        .selection-bar .info-text strong {
+            color: #007bff;
+        }
+        .selection-bar .btn {
+            padding: 8px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .selection-bar .btn:hover { background: #1e7e34; }
+        .selection-bar .btn-secondary {
+            background: #6c757d;
+        }
+        .selection-bar .btn-secondary:hover { background: #5a6268; }
+
+        /* ===== Grid ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .slip-card {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            background: #f9f9f9;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .slip-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            transform: translateY(-3px);
+            border-color: #007bff;
+        }
+        .slip-card.selected {
+            border-color: #28a745;
+            background: #f0fff4;
+            box-shadow: 0 0 0 2px #28a745;
+        }
+        .slip-card .checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #28a745;
+        }
+        .btn {
+            display: inline-block;
+            padding: 6px 16px;
+            margin-top: 8px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #1e7e34; }
+        .back { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
+        .flash { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .emp-name {
+            font-size: 13px;
+            font-weight: bold;
+            margin: 3px 0;
+            color: #333;
+            padding-left: 25px;
+        }
+        .emp-details {
+            font-size: 11px;
+            color: #666;
+            margin: 2px 0;
+        }
+        .emp-division {
+            display: inline-block;
+            background: #e7f3ff;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            color: #007bff;
+            margin: 3px 0;
+            font-weight: 500;
+        }
+        .emp-client {
+            display: inline-block;
+            background: #fff3cd;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            color: #856404;
+            margin: 2px 0;
+            font-weight: 500;
+        }
+        .net-pay {
+            font-size: 16px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 6px 0;
+        }
+        .emp-no {
+            font-size: 11px;
+            color: #888;
+            margin: 2px 0;
+        }
+        .card-divider {
+            width: 30px;
+            height: 2px;
+            background: #007bff;
+            margin: 6px auto;
+            border-radius: 2px;
+        }
+
+        /* ===== Pagination ===== */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+            margin: 30px 0 20px;
+            flex-wrap: wrap;
+        }
+        .pagination a, .pagination span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #007bff;
+            font-size: 13px;
+            transition: all 0.2s;
+            background: white;
+        }
+        .pagination a:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+        }
+        .pagination .active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+            font-weight: bold;
+        }
+        .pagination .disabled {
+            color: #999;
+            cursor: not-allowed;
+            background: #f5f5f5;
+        }
+        .pagination .page-info {
+            border: none;
+            color: #555;
+            font-size: 13px;
+            padding: 0 15px;
+            background: transparent;
+        }
+
+        /* ===== Stats ===== */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .stats-item {
+            font-size: 13px;
+            color: #555;
+        }
+        .stats-item strong {
+            color: #007bff;
+        }
+        .stats-total {
+            font-weight: bold;
+            color: #28a745;
+            font-size: 15px;
+        }
+        .stats-per-page {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats-per-page select {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .filter-bar { flex-direction: column; }
+            .filter-group { min-width: 100%; }
+            .filter-actions { flex-wrap: wrap; width: 100%; }
+            .filter-actions button { flex: 1; }
+            .selection-bar { flex-direction: column; text-align: center; }
+            .pagination a, .pagination span { min-width: 28px; height: 28px; padding: 0 6px; font-size: 11px; }
+            .stats { flex-direction: column; align-items: stretch; text-align: center; }
+            .stats-per-page { justify-content: center; }
+        }
+        @media (max-width: 400px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📄 All Employee Slips</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- ===== Stats ===== -->
+        <div class="stats">
+            <span class="stats-item">
+                <strong>👥 Total Employees:</strong> {{ total }}
+            </span>
+            <span class="stats-item">
+                <strong>💰 Total Salaries:</strong>
+                <span class="stats-total">{{ "%.2f"|format(total_net_pay_all) }}</span>
+            </span>
+            <span class="stats-item">
+                <strong>📄 Showing:</strong> {{ employees|length }} of {{ total }}
+            </span>
+            <span class="stats-item stats-per-page">
+                <strong>Show:</strong>
+                <form method="GET" action="{{ url_for('all_slips') }}" class="per-page-form">
+                    <input type="hidden" name="division" value="{{ filter_division }}">
+                    <input type="hidden" name="client" value="{{ filter_client }}">
+                    <select name="per_page" onchange="this.form.submit()">
+                        <option value="12" {% if per_page == '12' %}selected{% endif %}>12</option>
+                        <option value="24" {% if per_page == '24' %}selected{% endif %}>24</option>
+                        <option value="48" {% if per_page == '48' %}selected{% endif %}>48</option>
+                        <option value="96" {% if per_page == '96' %}selected{% endif %}>96</option>
+                        <option value="all" {% if per_page == 'all' %}selected{% endif %}>All</option>
+                    </select>
+                </form>
+            </span>
+        </div>
+
+        <!-- ===== Filter Bar ===== -->
+        <form method="GET" action="{{ url_for('all_slips') }}" class="filter-bar">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <div class="filter-group">
+                <label for="filter_division">📂 Division</label>
+                <select id="filter_division" name="division">
+                    <option value="">All Divisions</option>
+                    {% for div in divisions %}
+                    <option value="{{ div }}" {% if filter_division == div %}selected{% endif %}>{{ div }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filter_client">🏢 Client Name</label>
+                <select id="filter_client" name="client">
+                    <option value="">All Clients</option>
+                    {% for client in clients %}
+                    <option value="{{ client }}" {% if filter_client == client %}selected{% endif %}>{{ client }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit">🔍 Apply Filters</button>
+                <a href="{{ url_for('all_slips', per_page=per_page) }}" class="clear-btn">✕ Clear</a>
+            </div>
+        </form>
+
+        <!-- ===== Selection Bar ===== -->
+        <div class="selection-bar">
+            <span class="info-text">
+                <strong id="selectedCount">0</strong> employee(s) selected
+            </span>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="btn" onclick="selectAll()">✅ Select All</button>
+                <button class="btn btn-secondary" onclick="deselectAll()">⬜ Deselect All</button>
+                <button class="btn" onclick="generateSelected()">📄 Generate Selected</button>
+            </div>
+        </div>
+
+        <!-- ===== Grid ===== -->
+        <div class="grid">
+            {% for emp in employees %}
+            <div class="slip-card" data-emp-id="{{ emp.id }}">
+                <input type="checkbox" class="checkbox" onchange="updateCount()">
+                <div class="emp-name">{{ emp.name[:25] + '...' if emp.name|length > 25 else emp.name }}</div>
+                <div class="emp-no"># {{ emp.emp_no }}</div>
+                <div class="emp-division">📂 {{ emp.division or 'No Division' }}</div>
+                <div class="emp-client">🏢 {{ emp.project_name[:20] + '...' if emp.project_name|length > 20 else emp.project_name or 'No Client' }}</div>
+                <div class="emp-details">{{ emp.designation[:20] + '...' if emp.designation|length > 20 else emp.designation }}</div>
+                <div class="card-divider"></div>
+                <div class="net-pay">SAR {{ "%.2f"|format(emp.net_pay) }}</div>
+                <a href="{{ url_for('generate_slip', emp_id=emp.id) }}" class="btn">📄 Download</a>
+            </div>
+            {% else %}
+            <p style="grid-column: 1 / -1; text-align: center; padding: 40px;">⚠️ No employees found</p>
+            {% endfor %}
+        </div>
+
+        <!-- ===== Pagination ===== -->
+        {% if total_pages > 1 %}
+        <div class="pagination">
+            {% if page > 1 %}
+                <a href="{{ url_for('all_slips', page=page-1, division=filter_division, client=filter_client, per_page=per_page) }}">‹</a>
+            {% else %}
+                <span class="disabled">‹</span>
+            {% endif %}
+
+            {% set start_page = [1, page-2]|max %}
+            {% set end_page = [total_pages, page+2]|min %}
+
+            {% if start_page > 1 %}
+                <a href="{{ url_for('all_slips', page=1, division=filter_division, client=filter_client, per_page=per_page) }}">1</a>
+                {% if start_page > 2 %}
+                    <span class="disabled">…</span>
+                {% endif %}
+            {% endif %}
+
+            {% for p in range(start_page, end_page + 1) %}
+                {% if p == page %}
+                    <span class="active">{{ p }}</span>
+                {% else %}
+                    <a href="{{ url_for('all_slips', page=p, division=filter_division, client=filter_client, per_page=per_page) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if end_page < total_pages %}
+                {% if end_page < total_pages - 1 %}
+                    <span class="disabled">…</span>
+                {% endif %}
+                <a href="{{ url_for('all_slips', page=total_pages, division=filter_division, client=filter_client, per_page=per_page) }}">{{ total_pages }}</a>
+            {% endif %}
+
+            {% if page < total_pages %}
+                <a href="{{ url_for('all_slips', page=page+1, division=filter_division, client=filter_client, per_page=per_page) }}">›</a>
+            {% else %}
+                <span class="disabled">›</span>
+            {% endif %}
+
+            <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+        </div>
+        {% endif %}
+
+        <a href="{{ url_for('index') }}" class="back">← Back to Home</a>
+    </div>
+
+    <!-- ===== JavaScript ===== -->
+    <script>
+        function updateCount() {
+            const checkboxes = document.querySelectorAll('.checkbox:checked');
+            document.getElementById('selectedCount').textContent = checkboxes.length;
+
+            document.querySelectorAll('.slip-card').forEach(card => {
+                const checkbox = card.querySelector('.checkbox');
+                if (checkbox.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        function selectAll() {
+            document.querySelectorAll('.checkbox').forEach(cb => {
+                cb.checked = true;
+            });
+            updateCount();
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            updateCount();
+        }
+
+        function generateSelected() {
+            const selected = document.querySelectorAll('.checkbox:checked');
+            if (selected.length === 0) {
+                alert('⚠️ Please select at least one employee');
+                return;
+            }
+
+            // استخدام POST بدلاً من GET
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ url_for('generate_selected_slips') }}";
+
+            selected.forEach(cb => {
+                const card = cb.closest('.slip-card');
+                if (card) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'employee_ids';
+                    input.value = card.dataset.empId;
+                    form.appendChild(input);
+                }
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCount();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && (e.key === 'a' || e.key === 'A')) {
+                if (e.target.closest('input, select, textarea')) {
+                    return;
+                }
+                e.preventDefault();
+                selectAll();
+            }
+        });
+    </script>
+</body>
+</html>
