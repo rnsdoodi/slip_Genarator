@@ -328,33 +328,53 @@ def create_professional_slip(employee):
     styles = getSampleStyleSheet()
     story = []
 
-    # ===== الشعار (مصغر جداً) =====
+    # ===== الشعار (الصورة) =====
     logo_path = os.path.join('static', 'logo.png')
     if os.path.exists(logo_path):
         try:
-            img = Image(logo_path, width=1.0 * inch, height=0.4 * inch)  # ✅ تصغير الشعار أكثر
+            img = Image(logo_path, width=3.0 * inch, height=0.4 * inch)
             img.hAlign = 'CENTER'
             story.append(img)
         except:
             logo_style = ParagraphStyle(
                 'LogoStyle',
                 parent=styles['Normal'],
-                fontSize=14,
+                fontSize=16,
                 alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
+                fontName='Helvetica-Bold',
+                textColor=colors.HexColor('#003366')
             )
-            story.append(Paragraph("COMPANY", logo_style))
+            story.append(Paragraph("WORKFORCE SAUDIA", logo_style))
+            logo_style2 = ParagraphStyle(
+                'LogoStyle2',
+                parent=styles['Normal'],
+                fontSize=10,
+                alignment=TA_CENTER,
+                fontName='Helvetica',
+                textColor=colors.HexColor('#003366')
+            )
+            story.append(Paragraph("القوات العاملة السعودية", logo_style2))
     else:
         logo_style = ParagraphStyle(
             'LogoStyle',
             parent=styles['Normal'],
-            fontSize=14,
+            fontSize=16,
             alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
+            fontName='Helvetica-Bold',
+            textColor=colors.HexColor('#003366')
         )
-        story.append(Paragraph("COMPANY", logo_style))
+        story.append(Paragraph("WORKFORCE SAUDIA", logo_style))
+        logo_style2 = ParagraphStyle(
+            'LogoStyle2',
+            parent=styles['Normal'],
+            fontSize=10,
+            alignment=TA_CENTER,
+            fontName='Helvetica',
+            textColor=colors.HexColor('#003366')
+        )
+        story.append(Paragraph("القوات العاملة السعودية", logo_style2))
 
-    story.append(Spacer(1, 0.15 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
     # ===== العنوان =====
     title_style = ParagraphStyle(
@@ -381,10 +401,8 @@ def create_professional_slip(employee):
     story.append(Paragraph(f"Payslip for the Month of : {month_display}-{year_display}", month_style))
 
     story.append(Spacer(1, 0.1 * cm))
-    story.append(Paragraph("_" * 80, styles['Normal']))
-    story.append(Spacer(1, 0.15 * cm))
 
-    # ===== معلومات الموظف (جدول محسن) =====
+    # ===== معلومات الموظف =====
     emp_no_clean = str(employee.emp_no).split('.')[0] if employee.emp_no else ''
 
     hire_date_clean = employee.hire_date or ''
@@ -414,20 +432,18 @@ def create_professional_slip(employee):
         ["Employment Category", employee.status or 'WC-Expatriate'],
     ]
 
-    info_table = Table(info_data, colWidths=[4.0 * cm, 8.0 * cm])
+    info_table = Table(info_data, colWidths=[4.5 * cm, 8.5 * cm])
     info_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 3),
+        ('PADDING', (0, 0), (-1, -1), 5),
         ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
     ]))
     story.append(info_table)
 
-    story.append(Spacer(1, 0.15 * cm))
-    story.append(Paragraph("_" * 80, styles['Normal']))
-    story.append(Spacer(1, 0.15 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
     # ===== حساب الإجماليات =====
     total_earnings = sum([
@@ -464,57 +480,53 @@ def create_professional_slip(employee):
         ["Total Earnings", f"{total_earnings:,.2f}", "Total Deductions", f"{total_deductions:,.2f}"],
     ]
 
-    salary_table = Table(salary_data, colWidths=[4.0 * cm, 2.5 * cm, 4.0 * cm, 2.5 * cm])
+    salary_table = Table(salary_data, colWidths=[4.5 * cm, 2.8 * cm, 4.5 * cm, 2.8 * cm])
     salary_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 3),
+        ('PADDING', (0, 0), (-1, -1), 5),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
         ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
         ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-    ]))
-
-    salary_table.setStyle(TableStyle([
         ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
         ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, -1), (-1, -1), 9),
+        ('FONTSIZE', (0, -1), (-1, -1), 10),
     ]))
 
     story.append(salary_table)
 
-    story.append(Spacer(1, 0.15 * cm))
-    story.append(Paragraph("_" * 80, styles['Normal']))
-    story.append(Spacer(1, 0.15 * cm))
+    story.append(Spacer(1, 0.3 * cm))
 
     # ===== صافي الراتب =====
     net_data = [
         ["Net Salary", f"{net_pay:,.2f}"]
     ]
-    net_table = Table(net_data, colWidths=[6.0 * cm, 3.0 * cm])
+    net_table = Table(net_data, colWidths=[6.5 * cm, 3.5 * cm])
     net_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 4),
+        ('PADDING', (0, 0), (-1, -1), 6),
         ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
         ('BACKGROUND', (1, 0), (1, 0), colors.lightblue),
     ]))
     story.append(net_table)
 
-    story.append(Spacer(1, 0.1 * cm))
+    story.append(Spacer(1, 0.2 * cm))
 
-    # ===== الأرقام كتابة =====
+    # ===== الأرقام كتابة (معدل) =====
     def number_to_words(num):
+        """تحويل الأرقام إلى كلمات إنجليزية"""
         if num == 0:
             return "Zero"
         ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
         teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen",
                  "Nineteen"]
         tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
-        num = int(num)
+
         if num < 10:
             return ones[num]
         elif num < 20:
@@ -529,39 +541,50 @@ def create_professional_slip(employee):
         else:
             return str(num)
 
+    # ✅ تحويل الجزء الصحيح إلى كلمات
     amount_int = int(net_pay)
     amount_dec = int(round((net_pay % 1) * 100))
 
+    # ✅ تحويل الجزء العشري إلى كلمات
+    words_int = number_to_words(amount_int)
+    words_dec = number_to_words(amount_dec)
+
+    # ✅ عرض الرقم بالكلمات بالكامل
     words_style = ParagraphStyle(
         'WordsStyle',
         parent=styles['Normal'],
-        fontSize=8,
+        fontSize=9,
         alignment=TA_CENTER,
         fontName='Helvetica',
-        textColor=colors.grey
+        textColor=colors.black
     )
-    story.append(Paragraph(f"{number_to_words(amount_int)}. {amount_dec:02d} SAR Only", words_style))
 
-    story.append(Spacer(1, 0.15 * cm))
-    story.append(Paragraph("_" * 80, styles['Normal']))
-    story.append(Spacer(1, 0.15 * cm))
+    # ✅ صياغة الجملة كاملة بالكلمات
+    if amount_dec == 0:
+        full_words = f"{words_int} Saudi Riyals Only"
+    else:
+        full_words = f"{words_int} and {words_dec} Halalas Only"
+
+    story.append(Paragraph(full_words, words_style))
+
+    story.append(Spacer(1, 0.3 * cm))
 
     # ===== البنك =====
     bank_data = [
         ["Bank Name", employee.bank_name or '', "Account Number", employee.iban or '']
     ]
-    bank_table = Table(bank_data, colWidths=[2.5 * cm, 4.5 * cm, 2.5 * cm, 4.5 * cm])
+    bank_table = Table(bank_data, colWidths=[3.0 * cm, 5.0 * cm, 3.0 * cm, 5.0 * cm])
     bank_table.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 3),
+        ('PADDING', (0, 0), (-1, -1), 5),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     story.append(bank_table)
 
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.4 * cm))
 
     # ===== إخلاء المسؤولية =====
     disclaimer_style = ParagraphStyle(
@@ -578,9 +601,9 @@ def create_professional_slip(employee):
         disclaimer_style
     ))
 
-    story.append(Spacer(1, 0.3 * cm))
+    story.append(Spacer(1, 0.15 * cm))
 
-    # ===== Generated on (Date, Time) =====
+    # ===== Generated on =====
     gen_style = ParagraphStyle(
         'GenStyle',
         parent=styles['Normal'],
