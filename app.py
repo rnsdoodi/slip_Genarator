@@ -68,6 +68,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
 
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -309,63 +310,90 @@ def calculate_service_period(hire_date_str, end_date_str=None):
 # ============================================
 # 6. إنشاء الـ Slip
 # ============================================
-
 def create_professional_slip(employee):
-    """إنشاء Slip احترافي مع شعار الشركة"""
-    doc = Document()
+    """إنشاء Slip بصيغة PDF - نسخة محسنة"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import io
 
-    for section in doc.sections:
-        section.top_margin = Cm(1.5)
-        section.bottom_margin = Cm(1.5)
-        section.left_margin = Cm(1.5)
-        section.right_margin = Cm(1.5)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            topMargin=1.5 * cm, bottomMargin=1.5 * cm,
+                            leftMargin=1.5 * cm, rightMargin=1.5 * cm)
 
-    # الشعار
+    styles = getSampleStyleSheet()
+    story = []
+
+    # ===== الشعار (مصغر جداً) =====
     logo_path = os.path.join('static', 'logo.png')
-    logo_para = doc.add_paragraph()
-    logo_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
     if os.path.exists(logo_path):
         try:
-            run = logo_para.add_run()
-            run.add_picture(logo_path, width=Inches(2.5))
+            img = Image(logo_path, width=1.0 * inch, height=0.4 * inch)  # ✅ تصغير الشعار أكثر
+            img.hAlign = 'CENTER'
+            story.append(img)
         except:
-            logo_para.add_run("🏢").font.size = Pt(48)
+            logo_style = ParagraphStyle(
+                'LogoStyle',
+                parent=styles['Normal'],
+                fontSize=14,
+                alignment=TA_CENTER,
+                fontName='Helvetica-Bold'
+            )
+            story.append(Paragraph("COMPANY", logo_style))
     else:
-        logo_para.add_run("🏢").font.size = Pt(48)
+        logo_style = ParagraphStyle(
+            'LogoStyle',
+            parent=styles['Normal'],
+            fontSize=14,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold'
+        )
+        story.append(Paragraph("COMPANY", logo_style))
 
-    doc.add_paragraph()
+    story.append(Spacer(1, 0.15 * cm))
 
-    # العنوان
-    title_para = doc.add_paragraph()
-    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title_run = title_para.add_run("STATEMENT OF EARNINGS")
-    title_run.bold = True
-    title_run.font.size = Pt(22)
-    title_run.font.color.rgb = RGBColor(0, 51, 102)
+    # ===== العنوان =====
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        alignment=TA_CENTER,
+        spaceAfter=0.1 * cm,
+        fontName='Helvetica-Bold'
+    )
+    story.append(Paragraph("STATEMENT OF EARNINGS", title_style))
 
-    month_para = doc.add_paragraph()
-    month_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    month_display = employee.month or "June"
-    year_display = employee.year or 2026
-    month_run = month_para.add_run(f"Pay slip for the Month of: {month_display} {year_display}")
-    month_run.font.size = Pt(12)
-    month_run.italic = True
+    # ===== الشهر =====
+    month_style = ParagraphStyle(
+        'MonthStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_CENTER,
+        spaceAfter=0.3 * cm,
+        fontName='Helvetica'
+    )
+    month_display = employee.month or "October"
+    year_display = employee.year or 2025
+    story.append(Paragraph(f"Payslip for the Month of : {month_display}-{year_display}", month_style))
 
-    doc.add_paragraph("_" * 80)
+    story.append(Spacer(1, 0.1 * cm))
+    story.append(Paragraph("_" * 80, styles['Normal']))
+    story.append(Spacer(1, 0.15 * cm))
 
-    # معلومات الموظف
+    # ===== معلومات الموظف (جدول محسن) =====
     emp_no_clean = str(employee.emp_no).split('.')[0] if employee.emp_no else ''
-    iqama_clean = str(employee.iqama_number).split('.')[0] if employee.iqama_number else '---'
-    sap_clean = str(employee.sap_id).split('.')[0] if employee.sap_id else '---'
 
-    hire_date_clean = employee.hire_date or '---'
+    hire_date_clean = employee.hire_date or ''
     if ' ' in hire_date_clean:
         hire_date_clean = hire_date_clean.split(' ')[0]
     elif 'T' in hire_date_clean:
         hire_date_clean = hire_date_clean.split('T')[0]
 
-    end_date_clean = employee.end_employment_date or '---'
+    end_date_clean = employee.end_employment_date or ''
     if ' ' in end_date_clean:
         end_date_clean = end_date_clean.split(' ')[0]
     elif 'T' in end_date_clean:
@@ -373,165 +401,201 @@ def create_professional_slip(employee):
 
     service_period = calculate_service_period(employee.hire_date, employee.end_employment_date)
 
-    info_table = doc.add_table(rows=8, cols=2)
-    info_table.style = 'Table Grid'
-    info_table.columns[0].width = Inches(3)
-    info_table.columns[1].width = Inches(4)
-
-    for row in info_table.rows:
-        for cell in row.cells:
-            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-
     info_data = [
-        ("اﺳﻢ اﻟﻤﻮﻇﻒ / Employee Name", employee.name),
-        ("رﻗﻢ اﻟﻤﻮﻇﻒ / Employee Number", emp_no_clean),
-        ("رﻗﻢ اﻹﻗﺎﻣﺔ / Iqama Number", iqama_clean),
-        ("SAP ID", sap_clean),
-        ("اﻟﻤﺴﻤﻰ اﻟﻮﻇﻴﻔﻲ / Job Title", employee.designation or '---'),
-        ("اﻟﺠﻨﺴﻴﺔ / Nationality", employee.nationality or '---'),
-        ("اسم المشروع / Project Name", employee.project_name or '---'),
-        ("اﻟﻤﻮﻗﻊ / Location", employee.location or '---'),
+        ["Employee Name", employee.name],
+        ["Employee Number", emp_no_clean],
+        ["Job Title", employee.designation or ''],
+        ["Nationality", employee.nationality or ''],
+        ["Project Name", employee.project_name or ''],
+        ["Hire Date", hire_date_clean],
+        ["End Employment Date", end_date_clean],
+        ["Period of Service", service_period],
+        ["Location", employee.location or ''],
+        ["Employment Category", employee.status or 'WC-Expatriate'],
     ]
 
-    for i, (label, value) in enumerate(info_data):
-        info_table.cell(i, 0).text = label
-        info_table.cell(i, 1).text = str(value)
+    info_table = Table(info_data, colWidths=[4.0 * cm, 8.0 * cm])
+    info_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 3),
+        ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+    ]))
+    story.append(info_table)
 
-    doc.add_paragraph()
+    story.append(Spacer(1, 0.15 * cm))
+    story.append(Paragraph("_" * 80, styles['Normal']))
+    story.append(Spacer(1, 0.15 * cm))
 
-    # جدول التواريخ
-    date_table = doc.add_table(rows=2, cols=3)
-    date_table.style = 'Table Grid'
-    date_table.columns[0].width = Inches(2.5)
-    date_table.columns[1].width = Inches(2.5)
-    date_table.columns[2].width = Inches(2.5)
+    # ===== حساب الإجماليات =====
+    total_earnings = sum([
+        employee.basic_salary or 0,
+        employee.housing_allowance or 0,
+        employee.food_allowance or 0,
+        employee.transportation_allowance or 0,
+        employee.other_allowance or 0,
+        employee.overtime or 0,
+        employee.project_fix_allowance or 0,
+        employee.salary_adjustment or 0
+    ])
 
-    headers = ["ﺗﺎرﻳﺦ اﻟﺘﻌﻴﻴﻦ / Hire Date", "ﺗﺎرﻳﺦ اﻧﺘﻬﺎء اﻟﺘﻮﻇﻴﻒ / End Date", "ﻣﺪة اﻟﺨﺪﻣﺔ / Service Period"]
-    for i, header in enumerate(headers):
-        cell = date_table.cell(0, i)
-        cell.text = header
-        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for run in cell.paragraphs[0].runs:
-            run.bold = True
-            run.font.color.rgb = RGBColor(0, 51, 102)
+    total_deductions = sum([
+        employee.gosi_contribution or 0,
+        employee.other_deductions or 0
+    ])
 
-    date_table.cell(1, 0).text = hire_date_clean
-    date_table.cell(1, 0).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    date_table.cell(1, 1).text = end_date_clean
-    date_table.cell(1, 1).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    date_table.cell(1, 2).text = service_period
-    date_table.cell(1, 2).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for run in date_table.cell(1, 2).paragraphs[0].runs:
-        run.bold = True
-        run.font.color.rgb = RGBColor(0, 128, 0)
+    net_pay = total_earnings - total_deductions
 
-    doc.add_paragraph("_" * 80)
-
-    # جدول الراتب
-    salary_table = doc.add_table(rows=7, cols=4)
-    salary_table.style = 'Table Grid'
-    salary_table.columns[0].width = Inches(2.5)
-    salary_table.columns[1].width = Inches(2)
-    salary_table.columns[2].width = Inches(2.5)
-    salary_table.columns[3].width = Inches(2)
-
-    headers = ["Earnings / الإضافات", "Amount / المبلغ", "Deductions / الخصومات", "Amount / المبلغ"]
-    for i, header in enumerate(headers):
-        cell = salary_table.cell(0, i)
-        cell.text = header
-        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for run in cell.paragraphs[0].runs:
-            run.bold = True
-            run.font.color.rgb = RGBColor(0, 51, 102)
-
-    salary_rows = [
-        ("Basic Salary / الراتب الأساسي", employee.basic_salary, "Salary Adjustment / تسوية الراتب",
-         employee.salary_adjustment),
-        ("Housing Allowance / بدل سكن", employee.housing_allowance, "", ""),
-        ("Transportation Allowance / بدل النقل", employee.transportation_allowance, "", ""),
-        ("Other Allowance / بدلات أخرى", employee.other_allowance, "", ""),
-        ("", "", "", ""),
-        ("Total Earnings / الأرباح الكلية", employee.total_gross, "Total Deductions / إجمالي الخصومات",
-         employee.total_deductions),
+    # ===== جدول الراتب =====
+    salary_data = [
+        ["Earnings", "Amount (SAR)", "Deductions", "Amount (SAR)"],
+        ["Basic Salary", f"{employee.basic_salary or 0:,.2f}", "GOSI EE Contribution",
+         f"{employee.gosi_contribution or 0:,.2f}"],
+        ["Housing Allowance", f"{employee.housing_allowance or 0:,.2f}", "Other Deductions",
+         f"{employee.other_deductions or 0:,.2f}"],
+        ["Food Allowance", f"{employee.food_allowance or 0:,.2f}", "", ""],
+        ["Transportation Allowance", f"{employee.transportation_allowance or 0:,.2f}", "", ""],
+        ["Other Allowance", f"{employee.other_allowance or 0:,.2f}", "", ""],
+        ["Overtime", f"{employee.overtime or 0:,.2f}", "", ""],
+        ["Project Fix Allowance", f"{employee.project_fix_allowance or 0:,.2f}", "", ""],
+        ["Salary Adjustment", f"{employee.salary_adjustment or 0:,.2f}", "", ""],
+        ["Total Earnings", f"{total_earnings:,.2f}", "Total Deductions", f"{total_deductions:,.2f}"],
     ]
 
-    for i, row_data in enumerate(salary_rows):
-        row_idx = i + 1
-        for j, value in enumerate(row_data):
-            if j == 0 or j == 2:
-                salary_table.cell(row_idx, j).text = str(value)
-                salary_table.cell(row_idx, j).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-            else:
-                salary_table.cell(row_idx, j).text = f"{value:,.2f}" if value else "0.00"
-                salary_table.cell(row_idx, j).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    salary_table = Table(salary_data, colWidths=[4.0 * cm, 2.5 * cm, 4.0 * cm, 2.5 * cm])
+    salary_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 3),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+    ]))
 
-    doc.add_paragraph("_" * 80)
+    salary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, -1), (-1, -1), colors.lightblue),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 9),
+    ]))
 
-    # صافي الراتب
-    net_table = doc.add_table(rows=1, cols=2)
-    net_table.style = 'Table Grid'
-    net_table.columns[0].width = Inches(4)
-    net_table.columns[1].width = Inches(3)
+    story.append(salary_table)
 
-    net_cell = net_table.cell(0, 0)
-    net_cell.text = "Net Salary / صافي الراتب"
-    net_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    for run in net_cell.paragraphs[0].runs:
-        run.bold = True
-        run.font.size = Pt(14)
-        run.font.color.rgb = RGBColor(0, 51, 102)
+    story.append(Spacer(1, 0.15 * cm))
+    story.append(Paragraph("_" * 80, styles['Normal']))
+    story.append(Spacer(1, 0.15 * cm))
 
-    amount_cell = net_table.cell(0, 1)
-    amount_cell.text = f"{employee.net_pay:,.2f}"
-    amount_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    for run in amount_cell.paragraphs[0].runs:
-        run.bold = True
-        run.font.size = Pt(16)
-        run.font.color.rgb = RGBColor(0, 128, 0)
-
-    doc.add_paragraph("_" * 80)
-
-    # البنك
-    bank_table = doc.add_table(rows=1, cols=4)
-    bank_table.style = 'Table Grid'
-
-    bank_data = [
-        ("Bank Name / اسم البنك", employee.bank_name or '---', "Account Number / رقم الحساب", employee.iban or '---')
+    # ===== صافي الراتب =====
+    net_data = [
+        ["Net Salary", f"{net_pay:,.2f}"]
     ]
+    net_table = Table(net_data, colWidths=[6.0 * cm, 3.0 * cm])
+    net_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 4),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('BACKGROUND', (1, 0), (1, 0), colors.lightblue),
+    ]))
+    story.append(net_table)
 
-    for i, row_data in enumerate(bank_data):
-        for j, value in enumerate(row_data):
-            bank_table.cell(i, j).text = str(value)
-            bank_table.cell(i, j).paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    story.append(Spacer(1, 0.1 * cm))
 
-    doc.add_paragraph("_" * 80)
+    # ===== الأرقام كتابة =====
+    def number_to_words(num):
+        if num == 0:
+            return "Zero"
+        ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"]
+        teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen",
+                 "Nineteen"]
+        tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+        num = int(num)
+        if num < 10:
+            return ones[num]
+        elif num < 20:
+            return teens[num - 10]
+        elif num < 100:
+            return tens[num // 10] + (" " + ones[num % 10] if num % 10 else "")
+        elif num < 1000:
+            return ones[num // 100] + " Hundred" + (" " + number_to_words(num % 100) if num % 100 else "")
+        elif num < 1000000:
+            return number_to_words(num // 1000) + " Thousand" + (
+                " " + number_to_words(num % 1000) if num % 1000 else "")
+        else:
+            return str(num)
 
-    # إخلاء المسؤولية
-    disclaimer_para = doc.add_paragraph()
-    disclaimer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    amount_int = int(net_pay)
+    amount_dec = int(round((net_pay % 1) * 100))
 
-    disclaimer_text = (
-        "This document is automatically generated by the system and does not require signatures.\n"
-        "هذا المستند تم توليده تلقائياً من النظام ولا يحتاج إلى توقيعات."
+    words_style = ParagraphStyle(
+        'WordsStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        textColor=colors.grey
     )
+    story.append(Paragraph(f"{number_to_words(amount_int)}. {amount_dec:02d} SAR Only", words_style))
 
-    disclaimer_run = disclaimer_para.add_run(disclaimer_text)
-    disclaimer_run.font.size = Pt(11)
-    disclaimer_run.italic = True
-    disclaimer_run.font.color.rgb = RGBColor(100, 100, 100)
+    story.append(Spacer(1, 0.15 * cm))
+    story.append(Paragraph("_" * 80, styles['Normal']))
+    story.append(Spacer(1, 0.15 * cm))
 
-    doc.add_paragraph("_" * 80)
+    # ===== البنك =====
+    bank_data = [
+        ["Bank Name", employee.bank_name or '', "Account Number", employee.iban or '']
+    ]
+    bank_table = Table(bank_data, colWidths=[2.5 * cm, 4.5 * cm, 2.5 * cm, 4.5 * cm])
+    bank_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('PADDING', (0, 0), (-1, -1), 3),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+    ]))
+    story.append(bank_table)
 
-    # التذييل
-    footer_para = doc.add_paragraph()
-    footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    footer_run = footer_para.add_run(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    footer_run.font.size = Pt(8)
-    footer_run.italic = True
+    story.append(Spacer(1, 0.3 * cm))
 
-    return doc
+    # ===== إخلاء المسؤولية =====
+    disclaimer_style = ParagraphStyle(
+        'DisclaimerStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        textColor=colors.grey,
+        italic=True
+    )
+    story.append(Paragraph(
+        "This document is automatically generated by the system and does not require any signature.",
+        disclaimer_style
+    ))
 
+    story.append(Spacer(1, 0.3 * cm))
 
+    # ===== Generated on (Date, Time) =====
+    gen_style = ParagraphStyle(
+        'GenStyle',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        textColor=colors.grey
+    )
+    current_datetime = datetime.now().strftime("%d %B %Y at %H:%M")
+    story.append(Paragraph(f"Generated on: {current_datetime}", gen_style))
+
+    # ===== بناء الـ PDF =====
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 # ============================================
 # 7. Routes - المصادقة (Authentication)
 # ============================================
@@ -951,22 +1015,19 @@ def employee_detail(emp_id):
 @app.route('/generate_slip/<int:emp_id>')
 @login_required
 def generate_slip(emp_id):
-    """إنشاء وتحميل Slip فردي"""
+    """إنشاء وتحميل Slip بصيغة PDF"""
     employee = Employee.query.get_or_404(emp_id)
 
-    doc = create_professional_slip(employee)
+    pdf_buffer = create_professional_slip(employee)  # ✅ ترجع BytesIO
+    pdf_buffer.seek(0)  # ✅ إعادة المؤشر إلى البداية
 
-    file_stream = BytesIO()
-    doc.save(file_stream)
-    file_stream.seek(0)
-
-    filename = f"slip_{employee.emp_no}_{employee.month}_{employee.year}.docx"
+    filename = f"slip_{employee.emp_no}_{employee.month}_{employee.year}.pdf"
 
     return send_file(
-        file_stream,
+        pdf_buffer,
         as_attachment=True,
         download_name=filename,
-        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        mimetype='application/pdf'
     )
 
 
@@ -1052,14 +1113,13 @@ def generate_selected_slips():
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for emp in employees:
-            doc = create_professional_slip(emp)
-            doc_buffer = BytesIO()
-            doc.save(doc_buffer)
-            doc_buffer.seek(0)
+            # ✅ create_professional_slip ترجع BytesIO مباشرة
+            pdf_buffer = create_professional_slip(emp)
+            pdf_buffer.seek(0)
 
             emp_no_clean = str(emp.emp_no).replace('/', '_').replace('\\', '_')
-            filename = f"slip_{emp_no_clean}_{emp.month}_{emp.year}.docx"
-            zip_file.writestr(filename, doc_buffer.getvalue())
+            filename = f"slip_{emp_no_clean}_{emp.month}_{emp.year}.pdf"
+            zip_file.writestr(filename, pdf_buffer.getvalue())
 
     zip_buffer.seek(0)
 
@@ -1069,7 +1129,6 @@ def generate_selected_slips():
         download_name=f'slips_{datetime.now().strftime("%Y%m%d_%H%M")}.zip',
         mimetype='application/zip'
     )
-
 
 @app.route('/delete_all')
 @admin_required
